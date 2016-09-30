@@ -1,4 +1,5 @@
 #include "gamewindow.h"
+#include "camera.h"
 
 #include <QtGui/QGuiApplication>
 #include <QtGui/QMatrix4x4>
@@ -17,8 +18,9 @@
 using namespace std;
 
 
-GameWindow::GameWindow()
+GameWindow::GameWindow(int fps)
 {
+    this->fps = fps;
 }
 
 void GameWindow::initialize()
@@ -33,9 +35,12 @@ void GameWindow::initialize()
     glLoadIdentity();
     glOrtho(-1.0, 1.0, -1.0, 1.0, -100.0, 100.0);
 
-
     loadMap(":/heightmap-2.png");
 
+    timer = new QTimer(this);
+    //timer->setInterval(1000/fps);
+    connect(timer, SIGNAL(timeout()), this, SLOT(renderNow()));
+    timer->start(1000./fps);
 }
 
 void GameWindow::loadMap(QString localPath)
@@ -72,9 +77,7 @@ void GameWindow::render()
 
 
     glLoadIdentity();
-   glScalef(ss,ss,ss);
-    glRotatef(rotX,1.0f,0.0f,0.0f);
-    glRotatef(rotY,0.0f,0.0f,1.0f);
+    camera->updateCamera();
 
     switch(etat)
     {
@@ -105,6 +108,10 @@ void GameWindow::render()
 
 
     ++m_frame;
+
+    if (autorotate) {
+        camera->rotateY(1.0);
+    }
 }
 
 bool GameWindow::event(QEvent *event)
@@ -124,23 +131,55 @@ void GameWindow::keyPressEvent(QKeyEvent *event)
 {
     switch(event->key())
     {
+    case 'P':
+    {
+        fps *=2;
+        char c[10];
+        itoa(fps,c,10);
+        string s = string(c) + "fps";
+        this->setTitle(s.c_str());
+        timer->setInterval(1000./fps);
+    }
+        break;
+    case 'M':
+    {
+        fps /= 2;
+        if (fps <= 0) {
+            fps = 1;
+        }
+        char d[10];
+        itoa(fps,d,10);
+        string s2 = string(d) + "fps";
+        this->setTitle(s2.c_str());
+        timer->setInterval(1000./fps);
+    }
+        break;
+    case 'C':
+        autorotate = !autorotate;
+        break;
     case 'Z':
-        ss += 0.10f;
+        camera->zoom(0.10);
+        //ss += 0.10f;
         break;
     case 'S':
-        ss -= 0.10f;
+        camera->zoom(-0.10);
+        //ss -= 0.10f;
         break;
     case 'A':
-        rotX += 1.0f;
+        camera->rotateX(1.0);
+        //rotX += 1.0f;
         break;
     case 'E':
-        rotX -= 1.0f;
+        camera->rotateX(-1.0);
+        //rotX -= 1.0f;
         break;
     case 'Q':
-        rotY += 1.0f;
+        camera->rotateY(1.0);
+        //rotY += 1.0f;
         break;
     case 'D':
-        rotY -= 1.0f;
+        camera->rotateY(-1.0);
+        //rotY -= 1.0f;
         break;
     case 'W':
         etat ++;
@@ -158,7 +197,7 @@ void GameWindow::keyPressEvent(QKeyEvent *event)
         loadMap(depth);
         break;
     }
-    renderNow();
+    //renderNow();
 }
 
 
@@ -431,3 +470,9 @@ void GameWindow::displayColor(float alt)
     }
 
 }
+
+void GameWindow::setCamera(Camera *c) {
+    this->camera = c;
+}
+
+
